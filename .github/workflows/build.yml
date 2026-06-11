@@ -217,12 +217,12 @@ jobs:
           ### Use with an existing Nextflow installation
 
           \`\`\`bash
-          export NXF_BASE=https://github.com/${GITHUB_REPOSITORY}/releases/download
-          export NXF_VER=${version}
+          NXF_BASE=https://github.com/${GITHUB_REPOSITORY}/releases/download \\
+          NXF_VER=${version} \\
           nextflow run hello
           \`\`\`
 
-          Revert to your normal version with \`unset NXF_BASE NXF_VER\`.
+          Set inline as above, nothing persists in your environment. Do not run \`self-update\` with \`NXF_BASE\` set.
 
           ### Or as a standalone executable (no Nextflow required)
 

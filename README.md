@@ -15,15 +15,15 @@ Each build is published as a pre-release named after its version, for example `2
 
 ### With an existing Nextflow installation
 
-The standard Nextflow launcher can download any of these builds directly. Point `NXF_BASE` at this repository and set `NXF_VER` to the build you want:
+The standard Nextflow launcher can download any of these builds directly. Point `NXF_BASE` at this repository and set `NXF_VER` to the build you want. Setting the variables inline means nothing persists in your environment, and your next plain `nextflow` invocation behaves exactly as before:
 
 ```bash
-export NXF_BASE=https://github.com/nextflow-io/nextflow-dev-builds/releases/download
-export NXF_VER=26.04.3-master-0285c3b   # pick a version from the Releases page
+NXF_BASE=https://github.com/nextflow-io/nextflow-dev-builds/releases/download \
+NXF_VER=26.04.3-master-0285c3b \
 nextflow run hello
 ```
 
-To get the most recent build of a branch or PR, the [`latest/`](latest/) directory contains a pointer file per channel:
+Pick a version from the [Releases page](../../releases), or get the most recent build of a branch or PR from the pointer files in the [`latest/`](latest/) directory:
 
 ```bash
 export NXF_BASE=https://github.com/nextflow-io/nextflow-dev-builds/releases/download
@@ -33,11 +33,16 @@ nextflow run hello
 
 For a pull request, replace `latest/master` with `latest/pr-<number>`, e.g. `latest/pr-7123`.
 
-To go back to your normal Nextflow version:
+If you exported the variables, go back to your normal Nextflow version with:
 
 ```bash
 unset NXF_BASE NXF_VER
 ```
+
+> [!WARNING]
+> Do not run `nextflow self-update` while `NXF_BASE` is set. Self-update replaces the launcher script itself, and would leave you with the dev build as your default version even after unsetting the variables. If that happens, restore the regular launcher with `unset NXF_BASE NXF_VER` followed by `nextflow self-update`.
+
+The downloaded jars are cached in `~/.nextflow/framework/<version>/`. They are inert when not selected, but you can delete them to reclaim space.
 
 ### As a standalone executable
 
