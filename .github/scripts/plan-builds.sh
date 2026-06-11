@@ -25,6 +25,11 @@ add_candidate() {
   local base version tag
   base=$(gh api "repos/$SOURCE_REPO/contents/VERSION?ref=$sha" --jq .content | base64 -d | tr -d '[:space:]')
   version="${base}-${channel}-${sha:0:7}"
+  # the VERSION file in a PR is attacker-controlled, so only allow safe characters
+  if [[ ! "$version" =~ ^[A-Za-z0-9.\-]+$ ]]; then
+    echo "skip  $channel: unsafe version string '$version'"
+    return 0
+  fi
   tag="v${version}"
   if gh api "repos/$GITHUB_REPOSITORY/releases/tags/$tag" --silent >/dev/null 2>&1; then
     echo "skip  $channel: $tag already published"

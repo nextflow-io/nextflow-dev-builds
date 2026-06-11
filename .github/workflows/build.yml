@@ -41,6 +41,8 @@ jobs:
       any: ${{ steps.plan.outputs.any }}
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
 
       - name: Determine builds needed
         id: plan
@@ -62,18 +64,24 @@ jobs:
       max-parallel: 3
       matrix: ${{ fromJson(needs.plan.outputs.matrix) }}
     name: build ${{ matrix.version }}
+    env:
+      MATRIX_KIND: ${{ matrix.kind }}
+      MATRIX_CHANNEL: ${{ matrix.channel }}
+      MATRIX_SHA: ${{ matrix.sha }}
+      MATRIX_VERSION: ${{ matrix.version }}
     steps:
       - name: Checkout ${{ env.SOURCE_REPO }}@${{ matrix.ref }}
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           repository: nextflow-io/nextflow
           ref: ${{ matrix.ref }}
+          persist-credentials: false
 
       - name: Verify commit
         run: |
           actual=$(git rev-parse HEAD)
-          if [ "$actual" != "${{ matrix.sha }}" ]; then
-            echo "::error::Head moved since planning: expected ${{ matrix.sha }}, got $actual. The next scheduled run will pick up the new commit."
+          if [ "$actual" != "$MATRIX_SHA" ]; then
+            echo "::error::Head moved since planning: expected $MATRIX_SHA, got $actual. The next scheduled run will pick up the new commit."
             exit 1
           fi
 
@@ -84,7 +92,7 @@ jobs:
           cache: gradle
 
       - name: Set dev version
-        run: echo "${{ matrix.version }}" > VERSION
+        run: echo "$MATRIX_VERSION" > VERSION
 
       - name: Build distribution
         run: |
@@ -94,15 +102,14 @@ jobs:
       - name: Stage release assets
         run: |
           set -euo pipefail
-          v="${{ matrix.version }}"
           mkdir stage
-          cp "build/releases/nextflow-$v-one.jar" stage/
-          cp "build/releases/nextflow-$v-dist" stage/
+          cp "build/releases/nextflow-$MATRIX_VERSION-one.jar" stage/
+          cp "build/releases/nextflow-$MATRIX_VERSION-dist" stage/
           cp nextflow stage/nextflow
           (cd stage && sha256sum * > checksums.sha256)
           jq -n \
-            --arg kind "${{ matrix.kind }}" --arg channel "${{ matrix.channel }}" \
-            --arg sha "${{ matrix.sha }}" --arg version "$v" \
+            --arg kind "$MATRIX_KIND" --arg channel "$MATRIX_CHANNEL" \
+            --arg sha "$MATRIX_SHA" --arg version "$MATRIX_VERSION" \
             '{kind:$kind, channel:$channel, sha:$sha, version:$version}' \
             > stage/meta.json
 
@@ -120,7 +127,8 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      # credentials stay on disk because this job pushes pointer-file updates
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3 # zizmor: ignore[artipacked]
 
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
