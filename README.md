@@ -27,7 +27,7 @@ To get the most recent build of a branch or PR, the [`latest/`](latest/) directo
 
 ```bash
 export NXF_BASE=https://github.com/nextflow-io/nextflow-dev-builds/releases/download
-export NXF_VER=$(curl -fsSL https://raw.githubusercontent.com/nextflow-io/nextflow-dev-builds/main/latest/master)
+export NXF_VER=$(curl -fsSL https://raw.githubusercontent.com/nextflow-io/nextflow-dev-builds/master/latest/master)
 nextflow run hello
 ```
 
