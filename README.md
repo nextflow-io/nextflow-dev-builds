@@ -33,6 +33,25 @@ nextflow run hello
 
 For a pull request, replace `latest/master` with `latest/pr-<number>`, e.g. `latest/pr-7123`.
 
+If you do this often, add this small function to your shell profile:
+
+```bash
+nxf-dev() {
+  export NXF_BASE=https://github.com/nextflow-io/nextflow-dev-builds/releases/download
+  export NXF_VER=$(curl -fsSL "https://raw.githubusercontent.com/nextflow-io/nextflow-dev-builds/master/latest/${1:-master}")
+  echo "Using Nextflow dev build: $NXF_VER"
+}
+```
+
+Then switching to a dev build is just:
+
+```bash
+nxf-dev master      # latest master build
+nxf-dev pr-7123     # latest build of PR #7123
+nextflow run hello
+unset NXF_BASE NXF_VER   # back to normal
+```
+
 If you exported the variables, go back to your normal Nextflow version with:
 
 ```bash
