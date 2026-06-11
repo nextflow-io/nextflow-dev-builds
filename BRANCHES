@@ -1,0 +1,3 @@
+# Branches of nextflow-io/nextflow to build automatically.
+# One branch name per line. Lines starting with # are ignored.
+master
