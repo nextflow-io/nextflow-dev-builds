@@ -97,7 +97,9 @@ jobs:
       - name: Build distribution
         run: |
           ./gradlew buildInfo releaseInfo
-          BUILD_PACK=1 ./gradlew pack
+          # installPlugin unpacks the core plugins into NXF_PLUGINS_DIR,
+          # the same way Nextflow's own e2e build does (test-e2e/run.sh)
+          BUILD_PACK=1 NXF_PLUGINS_DIR="$PWD/build/plugins" ./gradlew pack installPlugin
 
       - name: Stage release assets
         run: |
@@ -106,6 +108,19 @@ jobs:
           cp "build/releases/nextflow-$MATRIX_VERSION-one.jar" stage/
           cp "build/releases/nextflow-$MATRIX_VERSION-dist" stage/
           cp nextflow stage/nextflow
+          # core plugins bundle: top-level entries are the unpacked plugin
+          # directories (<pluginId>-<pluginVersion>/), the layout the launcher
+          # expects for NXF_PLUGINS_DIR (see nextflow-io/nextflow#7219)
+          bundle="stage/nextflow-$MATRIX_VERSION-plugins.tar.gz"
+          tar -czf "$bundle" -C build/plugins .
+          if tar -tzf "$bundle" | grep -Ev '^\./(nf-[^/]+/|$)'; then
+            echo "::error::plugins bundle contains unexpected top-level entries"
+            exit 1
+          fi
+          if ! tar -tzf "$bundle" | grep -Eq '^\./nf-[^/]+/META-INF/MANIFEST\.MF$'; then
+            echo "::error::plugins bundle contains no plugin manifests"
+            exit 1
+          fi
           (cd stage && sha256sum * > checksums.sha256)
           jq -n \
             --arg kind "$MATRIX_KIND" --arg channel "$MATRIX_CHANNEL" \
