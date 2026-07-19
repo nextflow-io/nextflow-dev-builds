@@ -112,8 +112,7 @@ jobs:
           # directories (<pluginId>-<pluginVersion>/), the layout the launcher
           # expects for NXF_PLUGINS_DIR (see nextflow-io/nextflow#7219)
           bundle="stage/nextflow-$MATRIX_VERSION-plugins.tar.gz"
-          tar -czf "$bundle" -C build/plugins .
-          listing=$(tar -tzf "$bundle")
+          listing=$(tar -czvf "$bundle" -C build/plugins .)
           if grep -Ev '^\./(nf-[^/]+/|$)' <<< "$listing"; then
             echo "::error::plugins bundle contains unexpected top-level entries"
             exit 1
