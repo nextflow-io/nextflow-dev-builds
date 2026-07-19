@@ -2,8 +2,9 @@
 #
 # Publish built artifacts as pre-releases and update the latest/ pointer
 # files. Expects the build artifacts in the directory given as the first
-# argument (default: artifacts), one sub-directory per build, each
-# containing a meta.json describing the build.
+# argument (default: artifacts), one sub-directory per build (or a single
+# build's files directly in the directory), each build described by its
+# meta.json.
 
 set -euo pipefail
 shopt -s nullglob
@@ -13,9 +14,12 @@ ARTIFACTS_DIR=${1:-artifacts}
 
 mkdir -p latest
 
-for dir in "$ARTIFACTS_DIR"/*/; do
-  meta="$dir/meta.json"
+# Each build's staged assets are marked by a meta.json. Multiple artifacts
+# unpack to one sub-directory per build, but actions/download-artifact
+# unpacks a single artifact into the artifacts dir itself, so check both.
+for meta in "$ARTIFACTS_DIR"/meta.json "$ARTIFACTS_DIR"/*/meta.json; do
   [ -f "$meta" ] || continue
+  dir=$(dirname "$meta")
   version=$(jq -r .version "$meta")
   channel=$(jq -r .channel "$meta")
   sha=$(jq -r .sha "$meta")
