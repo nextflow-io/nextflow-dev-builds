@@ -113,11 +113,12 @@ jobs:
           # expects for NXF_PLUGINS_DIR (see nextflow-io/nextflow#7219)
           bundle="stage/nextflow-$MATRIX_VERSION-plugins.tar.gz"
           tar -czf "$bundle" -C build/plugins .
-          if tar -tzf "$bundle" | grep -Ev '^\./(nf-[^/]+/|$)'; then
+          listing=$(tar -tzf "$bundle")
+          if grep -Ev '^\./(nf-[^/]+/|$)' <<< "$listing"; then
             echo "::error::plugins bundle contains unexpected top-level entries"
             exit 1
           fi
-          if ! tar -tzf "$bundle" | grep -Eq '^\./nf-[^/]+/classes/META-INF/MANIFEST\.MF$'; then
+          if ! grep -Eq '^\./nf-[^/]+/classes/META-INF/MANIFEST\.MF$' <<< "$listing"; then
             echo "::error::plugins bundle contains no plugin manifests"
             exit 1
           fi
