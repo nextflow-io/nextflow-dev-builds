@@ -81,9 +81,18 @@ Every release's notes contain ready-made copy-paste commands for both methods.
 |-------|-------------|
 | `nextflow-<version>-one.jar` | Fat jar downloaded by the Nextflow launcher (`NXF_BASE` method) |
 | `nextflow-<version>-dist` | Self-contained executable (launcher + jar in one file) |
+| `nextflow-<version>-plugins.tar.gz` | Core plugins compiled from the same source (see [below](#core-plugins-bundle)) |
 | `nextflow` | The launcher script from that commit, with its default version set to the build |
 | `checksums.sha256` | SHA-256 checksums of the assets |
 | `meta.json` | Build metadata (source commit, branch or PR, version) |
+
+### Core plugins bundle
+
+`nextflow-<version>-plugins.tar.gz` contains the core plugins (`nf-amazon`, `nf-google`, `nf-tower`, ...) compiled from the same source as the rest of the build. Its top-level entries are the unpacked plugin directories, named `<pluginId>-<pluginVersion>/` — the same layout Nextflow keeps in its plugins directory (`$NXF_HOME/plugins`). Note that the directory names carry each plugin's own version, which is unrelated to the build version in the asset name.
+
+The `NXF_DEV` launcher mode (added by [nextflow-io/nextflow#7219](https://github.com/nextflow-io/nextflow/pull/7219)) downloads this bundle automatically and uses it as `NXF_PLUGINS_DIR`, so a PR that changes a core plugin is tested against the plugin code from that PR. The plain `NXF_BASE`+`NXF_VER` method does **not** use the bundle: plugins are resolved from the plugin registry at runtime, the same way regular releases do.
+
+Releases published before this asset was introduced simply lack it; the `NXF_DEV` launcher prints a warning and falls back to the released plugins.
 
 ## Triggering a build manually
 
@@ -96,6 +105,6 @@ gh workflow run build.yml -R nextflow-io/nextflow-dev-builds -f branch=master
 
 ## Caveats
 
-- Dev builds resolve Nextflow plugins (nf-amazon, nf-tower, etc.) from the plugin registry at runtime, the same way regular releases do. A PR that changes a plugin and bumps its version cannot be fully tested this way, since the new plugin version is not published anywhere. Core changes, which are the vast majority, work fine.
+- When used via `NXF_BASE`+`NXF_VER`, dev builds resolve Nextflow plugins (nf-amazon, nf-tower, etc.) from the plugin registry at runtime, the same way regular releases do — a PR that changes a core plugin is then tested against the *released* plugin code. To test core plugin changes, use the `NXF_DEV` launcher mode, which picks up the [core plugins bundle](#core-plugins-bundle) built from the PR source.
 - Builds run only for code hosted in `nextflow-io/nextflow` (branches and PRs targeting it).
 - Old builds are deleted by the retention policy, so do not depend on a dev build URL staying around. Pin a regular release for anything that matters.
