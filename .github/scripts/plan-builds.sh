@@ -19,35 +19,14 @@ set -euo pipefail
 SOURCE_REPO=${SOURCE_REPO:-nextflow-io/nextflow}
 PR_ACTIVITY_WINDOW_DAYS=${PR_ACTIVITY_WINDOW_DAYS:-7}
 
+pending='[]'
 candidates='[]'
 failed=''
 
 # args: kind channel ref sha
 add_candidate() {
-  local kind=$1 channel=$2 ref=$3 sha=$4
-  local base version tag
-  base=$(gh api "repos/$SOURCE_REPO/contents/VERSION?ref=$sha" --jq .content | base64 -d | tr -d '[:space:]')
-  version="${base}-${channel}-${sha:0:7}"
-  # the VERSION file in a PR is attacker-controlled, so only allow safe characters
-  if [[ ! "$version" =~ ^[A-Za-z0-9.\-]+$ ]]; then
-    echo "skip  $channel: unsafe version string '$version'"
-    return 0
-  fi
-  if grep -qxF "$version" <<< "$failed"; then
-    echo "skip  $channel: $version already failed to build"
-    return 0
-  fi
-  tag="v${version}"
-  if gh api "repos/$GITHUB_REPOSITORY/releases/tags/$tag" --silent >/dev/null 2>&1; then
-    echo "skip  $channel: $tag already published"
-    return 0
-  fi
-  echo "build $channel: $version"
-  candidates=$(jq -c \
-    --arg kind "$kind" --arg channel "$channel" --arg ref "$ref" \
-    --arg sha "$sha" --arg version "$version" \
-    '. + [{kind:$kind, channel:$channel, ref:$ref, sha:$sha, version:$version}]' \
-    <<< "$candidates")
+  pending=$(jq -c --arg kind "$1" --arg channel "$2" --arg ref "$3" --arg sha "$4" \
+    '. + [{$kind, $channel, $ref, $sha}]' <<< "$pending")
 }
 
 add_branch() {
@@ -78,10 +57,8 @@ elif [ -n "${INPUT_BRANCH:-}" ]; then
 else
   # otherwise a broken commit is rebuilt every run until its next push
   failed=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/build.yml/runs?status=failure&per_page=10" --jq '.workflow_runs[].id' |
-    while read -r id; do
-      gh api "repos/$GITHUB_REPOSITORY/actions/runs/$id/jobs?per_page=100" \
-        --jq '.jobs[] | select(.conclusion == "failure") | .name | ltrimstr("build ")'
-    done)
+    xargs -P 10 -I{} gh api "repos/$GITHUB_REPOSITORY/actions/runs/{}/jobs?per_page=100" \
+      --jq '.jobs[] | select(.conclusion == "failure") | .name | ltrimstr("build ")')
 
   # tracked branches
   while read -r b; do
@@ -97,6 +74,43 @@ else
   for entry in "${prs[@]}"; do
     add_pr $entry
   done
+fi
+
+if [ "$pending" != '[]' ]; then
+  # every candidate's VERSION file in one request, aliased s0, s1, ...
+  query=$(jq -r --arg repo "$SOURCE_REPO" '
+    ($repo | split("/")) as [$owner, $name]
+    | "query { repository(owner: \"\($owner)\", name: \"\($name)\") { "
+      + ([to_entries[] | "s\(.key): object(expression: \"\(.value.sha):VERSION\") { ... on Blob { text } }"] | join(" "))
+      + " } }"' <<< "$pending")
+  bases=$(gh api graphql -f query="$query" --jq .data.repository)
+  # prune deletes tags along with releases, so a tag means published
+  published=$(git ls-remote --tags --refs "https://github.com/$GITHUB_REPOSITORY" | sed 's|.*refs/tags/||')
+
+  lines=$(jq -r --argjson bases "$bases" 'to_entries[]
+    | "\(.value.kind) \(.value.channel) \(.value.ref) \(.value.sha) \($bases["s\(.key)"].text // "" | gsub("\\s"; ""))"' <<< "$pending")
+  while read -r kind channel ref sha base; do
+    version="${base}-${channel}-${sha:0:7}"
+    # the VERSION file in a PR is attacker-controlled, so only allow safe characters
+    if [[ ! "$version" =~ ^[A-Za-z0-9][A-Za-z0-9.\-]*$ ]]; then
+      echo "skip  $channel: unsafe version string '$version'"
+      continue
+    fi
+    if grep -qxF "$version" <<< "$failed"; then
+      echo "skip  $channel: $version already failed to build"
+      continue
+    fi
+    if grep -qxF "v$version" <<< "$published"; then
+      echo "skip  $channel: v$version already published"
+      continue
+    fi
+    echo "build $channel: $version"
+    candidates=$(jq -c \
+      --arg kind "$kind" --arg channel "$channel" --arg ref "$ref" \
+      --arg sha "$sha" --arg version "$version" \
+      '. + [{kind:$kind, channel:$channel, ref:$ref, sha:$sha, version:$version}]' \
+      <<< "$candidates")
+  done <<< "$lines"
 fi
 
 count=$(jq length <<< "$candidates")
