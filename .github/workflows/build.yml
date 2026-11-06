@@ -36,6 +36,7 @@ jobs:
   plan:
     runs-on: ubuntu-latest
     permissions:
+      actions: read
       contents: read
     outputs:
       matrix: ${{ steps.plan.outputs.matrix }}

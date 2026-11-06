@@ -9,6 +9,8 @@ A scheduled workflow runs every 30 minutes and builds:
 - branches listed in the [`BRANCHES`](BRANCHES) file (currently `master`), whenever there are new commits
 - open pull requests on `nextflow-io/nextflow` with activity in the last 7 days, whenever there are new commits. Only pull requests from branches in `nextflow-io/nextflow` itself are built, not pull requests from forks
 
+If a commit fails to build, the scheduled workflow does not retry it; the next push to that branch or PR is built as usual. To retry the same commit, trigger a build manually (see [below](#triggering-a-build-manually)).
+
 Each build is published as a pre-release named after its version, for example `26.04.3-master-0285c3b` or `26.04.3-pr-7123-adcf19a`. The version is the Nextflow base version plus the branch or PR, plus the short commit hash. Old builds are pruned automatically: closed PR builds are deleted, and only the most recent builds are kept per branch and PR.
 
 ## Using a dev build
