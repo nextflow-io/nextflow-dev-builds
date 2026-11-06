@@ -1,7 +1,8 @@
 name: Build dev releases
 
 # Builds Nextflow from nextflow-io/nextflow (tracked branches + recently
-# updated open PRs) and publishes the artifacts as pre-releases in this repo.
+# updated open PRs, excluding PRs from forks) and publishes the artifacts as
+# pre-releases in this repo.
 #
 # Security note: PR builds execute untrusted code (gradle build scripts), so
 # the `build` job runs with a read-only token and no secrets. Publishing

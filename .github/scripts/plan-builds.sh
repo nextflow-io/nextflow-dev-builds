@@ -8,7 +8,8 @@
 #   - otherwise: all branches listed in the BRANCHES file, plus open PRs
 #     on the source repo with activity in the last PR_ACTIVITY_WINDOW_DAYS
 #
-# Anything already published as a release in this repo is skipped.
+# PRs from forks are always skipped, as is anything already published as a
+# release in this repo.
 # Writes `matrix` (JSON, {include: [...]}) and `any` (true/false) to
 # GITHUB_OUTPUT.
 
@@ -51,8 +52,16 @@ add_branch() {
 }
 
 add_pr() {
-  local num=$1 sha=${2:-}
-  [ -n "$sha" ] || sha=$(gh api "repos/$SOURCE_REPO/pulls/$num" --jq .head.sha)
+  local num=$1 sha=${2:-} head_repo=${3:-} info
+  if [ -z "$sha" ]; then
+    info=$(gh api "repos/$SOURCE_REPO/pulls/$num" --jq '"\(.head.sha) \(.head.repo.full_name)"')
+    read -r sha head_repo <<< "$info"
+  fi
+  # fork PRs would get third-party code published under this org
+  if [ "$head_repo" != "$SOURCE_REPO" ]; then
+    echo "skip  pr-$num: head is in fork '$head_repo'"
+    return 0
+  fi
   add_candidate pr "pr-${num}" "refs/pull/${num}/head" "$sha"
 }
 
@@ -71,7 +80,7 @@ else
   # open PRs with recent activity
   cutoff=$(date -u -d "-${PR_ACTIVITY_WINDOW_DAYS} days" +%Y-%m-%dT%H:%M:%SZ)
   mapfile -t prs < <(gh api "repos/$SOURCE_REPO/pulls?state=open&sort=updated&direction=desc&per_page=100" \
-    --jq ".[] | select(.updated_at >= \"$cutoff\") | \"\(.number) \(.head.sha)\"")
+    --jq ".[] | select(.updated_at >= \"$cutoff\") | \"\(.number) \(.head.sha) \(.head.repo.full_name)\"")
   for entry in "${prs[@]}"; do
     add_pr $entry
   done

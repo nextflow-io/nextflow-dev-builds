@@ -7,7 +7,7 @@ Automated builds of [Nextflow](https://github.com/nextflow-io/nextflow) from the
 A scheduled workflow runs every 30 minutes and builds:
 
 - branches listed in the [`BRANCHES`](BRANCHES) file (currently `master`), whenever there are new commits
-- open pull requests on `nextflow-io/nextflow` with activity in the last 7 days, whenever there are new commits
+- open pull requests on `nextflow-io/nextflow` with activity in the last 7 days, whenever there are new commits. Only pull requests from branches in `nextflow-io/nextflow` itself are built, not pull requests from forks
 
 Each build is published as a pre-release named after its version, for example `26.04.3-master-0285c3b` or `26.04.3-pr-7123-adcf19a`. The version is the Nextflow base version plus the branch or PR, plus the short commit hash. Old builds are pruned automatically: closed PR builds are deleted, and only the most recent builds are kept per branch and PR.
 
@@ -96,7 +96,7 @@ Releases published before this asset was introduced simply lack it; the `NXF_DEV
 
 ## Triggering a build manually
 
-Builds for active PRs and tracked branches happen automatically within about 30 minutes of a push. To build something immediately, or to build a PR or branch outside the automatic rules, use the [build workflow](../../actions/workflows/build.yml) with "Run workflow", or the GitHub CLI:
+Builds for active PRs and tracked branches happen automatically within about 30 minutes of a push. To build something immediately, or to build a PR or branch outside the automatic rules, use the [build workflow](../../actions/workflows/build.yml) with "Run workflow", or the GitHub CLI. Pull requests from forks are skipped here too:
 
 ```bash
 gh workflow run build.yml -R nextflow-io/nextflow-dev-builds -f pr=7123
@@ -106,5 +106,5 @@ gh workflow run build.yml -R nextflow-io/nextflow-dev-builds -f branch=master
 ## Caveats
 
 - When used via `NXF_BASE`+`NXF_VER`, dev builds resolve Nextflow plugins (nf-amazon, nf-tower, etc.) from the plugin registry at runtime, the same way regular releases do — a PR that changes a core plugin is then tested against the *released* plugin code. To test core plugin changes, use the `NXF_DEV` launcher mode, which picks up the [core plugins bundle](#core-plugins-bundle) built from the PR source.
-- Builds run only for code hosted in `nextflow-io/nextflow` (branches and PRs targeting it).
+- Builds run only for code hosted in `nextflow-io/nextflow`: its branches, and pull requests whose head branch is in that repository. Pull requests from forks are never built.
 - Old builds are deleted by the retention policy, so do not depend on a dev build URL staying around. Pin a regular release for anything that matters.
