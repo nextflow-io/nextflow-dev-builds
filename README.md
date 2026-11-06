@@ -11,9 +11,22 @@ A scheduled workflow runs every 30 minutes and builds:
 
 Each build is published as a pre-release named after its version, for example `26.04.3-master-0285c3b` or `26.04.3-pr-7123-adcf19a`. The version is the Nextflow base version plus the branch or PR, plus the short commit hash. Old builds are pruned automatically: closed PR builds are deleted, and only the most recent builds are kept per branch and PR.
 
+Pull requests on `nextflow-io/nextflow` also receive an automated comment with ready-made commands for testing that PR's dev build, kept up to date on each push.
+
 ## Using a dev build
 
-### With an existing Nextflow installation
+### With NXF_DEV
+
+Recent versions of the Nextflow launcher (26.05.0-edge and later) have built-in support for dev builds. Set `NXF_DEV` to a channel name and the launcher resolves and downloads the latest build for it automatically:
+
+```bash
+NXF_DEV=master nextflow run hello     # latest master build
+NXF_DEV=pr-7123 nextflow run hello    # latest build of PR #7123
+```
+
+To pin an exact build instead of the latest, set `NXF_VER` to a specific version alongside `NXF_DEV`. Do not run `self-update` while `NXF_DEV` is set (the launcher refuses, to protect your installation).
+
+### With older Nextflow versions
 
 The standard Nextflow launcher can download any of these builds directly. Point `NXF_BASE` at this repository and set `NXF_VER` to the build you want. Setting the variables inline means nothing persists in your environment, and your next plain `nextflow` invocation behaves exactly as before:
 
