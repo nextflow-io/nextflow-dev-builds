@@ -90,7 +90,7 @@ jobs:
         with:
           distribution: temurin
           java-version: 21
-          cache: gradle
+          # no `cache: gradle`: PR code could poison the cache restored by master builds
 
       - name: Set dev version
         run: echo "$MATRIX_VERSION" > VERSION
